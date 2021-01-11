@@ -1,0 +1,15 @@
+GET http://localhost:8080/credit/reservation
+
+###
+
+POST http://localhost:8080/credit/reservation
+Content-Type: application/json
+
+{
+  "id": "0",
+  "amount": 500
+}
+
+###
+
+DELETE http://localhost:8080/credit/reservation/0
