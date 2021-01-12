@@ -1,5 +1,7 @@
-package com.nibado.example.saga;
+package com.nibado.example.saga.config;
 
+import com.nibado.example.saga.mock.CreditClient;
+import com.nibado.example.saga.mock.StockClient;
 import com.nibado.example.saga.workflow.ItemOrderActivitiesImpl;
 import com.nibado.example.saga.workflow.ItemOrderWorkflowImpl;
 import io.temporal.client.WorkflowClient;
@@ -13,12 +15,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
+
 @Configuration
 public class TemporalConfig {
     private static final String ITEM_ORDER_QUEUE = "ItemOrderQueue";
     private static final Logger log = LoggerFactory.getLogger(TemporalConfig.class);
 
-    public static final WorkflowOptions ITEM_ORDER_OPTIONS = WorkflowOptions.newBuilder().setTaskQueue(ITEM_ORDER_QUEUE).build();
+    public static final WorkflowOptions ITEM_ORDER_OPTIONS = WorkflowOptions.newBuilder()
+        .setWorkflowRunTimeout(Duration.ofSeconds(10))
+        .setWorkflowTaskTimeout(Duration.ofSeconds(10))
+
+        .setTaskQueue(ITEM_ORDER_QUEUE).build();
 
     @Bean
     public WorkflowClient client() {
@@ -35,10 +43,10 @@ public class TemporalConfig {
     }
 
     @Bean
-    public Worker worker(WorkerFactory factory) {
+    public Worker worker(WorkerFactory factory, CreditClient creditClient, StockClient stockClient) {
         var worker = factory.newWorker(ITEM_ORDER_QUEUE);
         worker.registerWorkflowImplementationTypes(ItemOrderWorkflowImpl.class);
-        worker.registerActivitiesImplementations(new ItemOrderActivitiesImpl());
+        worker.registerActivitiesImplementations(new ItemOrderActivitiesImpl(creditClient, stockClient));
 
         factory.start();
 

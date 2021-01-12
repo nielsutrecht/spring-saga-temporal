@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,8 +55,8 @@ public class StockService {
         }
     }
 
-    @DeleteMapping("/reservation/{id")
-    public ResponseEntity<Void> cancelReservations(int id) {
+    @DeleteMapping("/reservation/{id}")
+    public ResponseEntity<Void> cancelReservations(@PathVariable int id) {
         synchronized (warehouse) {
             reservations.removeIf(r -> r.id == id);
             log.info("Removed reservation {}", id);
@@ -66,6 +67,11 @@ public class StockService {
 
     @PostMapping("/reservation/{user}/send")
     public ResponseEntity<Void> sendItems(@PathVariable String user) {
+        //25% of the time this will throw an error simulating network issues.
+        if(Math.random() > 0.75) {
+            log.error("Simulating problem reaching downstream service");
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+        }
         synchronized (warehouse) {
             var userReservations = reservations.stream()
                 .filter(r -> r.user.equals(user))
@@ -79,9 +85,16 @@ public class StockService {
         }
     }
 
-    private record ReservationRequest(String user, String item, int qtty) {
+    public record ReservationRequest(String user, String item, int qtty) {
     }
 
-    private record ItemReservation(int id, String user, String item, int qtty) {
+    public record ItemReservation(int id, String user, String item, int qtty) {
+    }
+
+    @PostConstruct
+    public void fillStock() {
+        reservations.clear();
+        List.of("Apple", "Orange", "Pear", "Pineapple")
+            .forEach(f -> warehouse.put(f, new AtomicInteger(1000)));
     }
 }

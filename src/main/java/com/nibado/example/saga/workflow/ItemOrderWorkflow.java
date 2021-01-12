@@ -8,5 +8,5 @@ import java.util.List;
 @WorkflowInterface
 public interface ItemOrderWorkflow {
     @WorkflowMethod
-    void orderItems(List<ItemQtty> items);
+    void orderItems(String userId, List<ItemQtty> items);
 }

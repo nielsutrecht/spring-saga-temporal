@@ -1,5 +1,7 @@
 package com.nibado.example.saga.mock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RestController
 @RequestMapping("/credit")
 public class CreditService {
+    private static final Logger log = LoggerFactory.getLogger(CreditService.class);
     private static final int MAX_CREDIT = 1000;
     private final List<CreditReservation> reservations = new ArrayList<>();
     private final AtomicInteger nextId = new AtomicInteger();
@@ -23,35 +26,48 @@ public class CreditService {
     @PostMapping("/reservation")
     public ResponseEntity<CreditReservationResponse> reserveCredit(@RequestBody CreditReservationRequest req) {
         var creditAvailable = MAX_CREDIT - reservations.stream()
-            .filter(r -> r.userId().equals(req.id()))
+            .filter(r -> r.userId().equals(req.userId()))
             .mapToInt(CreditReservation::amount)
             .sum();
 
         if (creditAvailable < req.amount()) {
+            log.error("Not enough credit available for user {}", req.userId);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } else {
-            var reservation = new CreditReservation(nextId.getAndIncrement(), req.id(), req.amount());
+            var reservation = new CreditReservation(nextId.getAndIncrement(), req.userId, req.amount);
             reservations.add(reservation);
 
+            log.info("Credit reservation {} for {} added for user {}, available: {}",
+                reservation.id,
+                reservation.amount,
+                reservation.userId,
+                creditAvailable - reservation.amount());
+
             return ResponseEntity.ok(new CreditReservationResponse(
-                reservation.id(),
-                reservation.amount(),
+                reservation.id,
+                reservation.amount,
                 creditAvailable - reservation.amount()));
         }
     }
 
     @DeleteMapping("/reservation/{id}")
-    public void deleteCreditReservation(@PathVariable int id) {
-        reservations.removeIf(r -> r.id() == id);
+    public ResponseEntity<Void> deleteCreditReservation(@PathVariable int id) {
+        if(reservations.stream().noneMatch(r -> r.id == id)) {
+            log.error("No reservation with userId {}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        reservations.removeIf(r -> r.id == id);
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    private record CreditReservation(int id, String userId, int amount) {
+    public record CreditReservation(int id, String userId, int amount) {
     }
 
-    private record CreditReservationRequest(String id, int amount) {
+    public record CreditReservationRequest(String userId, int amount) {
     }
 
-    private record CreditReservationResponse(int id, int amount, int amountLeft) {
+    public record CreditReservationResponse(int id, int amount, int amountLeft) {
     }
 }
 

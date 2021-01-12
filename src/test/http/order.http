@@ -1,0 +1,12 @@
+POST http://localhost:8080/order
+Content-Type: application/json
+
+{
+  "userId" : "john",
+  "items" : [
+    {"name": "Apple", "qtty":  10},
+    {"name": "Pear", "qtty":  15}
+  ]
+}
+
+###

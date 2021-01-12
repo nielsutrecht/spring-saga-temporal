@@ -21,11 +21,24 @@ public class ItemOrderWorkflowImpl implements ItemOrderWorkflow {
         Workflow.newActivityStub(ItemOrderActivities.class, options);
 
     @Override
-    public void orderItems(List<ItemQtty> items) {
-        Saga.Options sagaOptions = new Saga.Options.Builder().setParallelCompensation(true).build();
+    public void orderItems(String userId, List<ItemQtty> items) {
+        Saga.Options sagaOptions = new Saga.Options.Builder()
+            .setParallelCompensation(true).build();
         Saga saga = new Saga(sagaOptions);
+
         try {
-            activities.debug();
+            var creditRequired = activities.calculateCost(items);
+
+            var creditReservation = activities.creditReservation(userId, creditRequired);
+            saga.addCompensation(activities::compensateCreditReservation, creditReservation);
+
+            for (var item : items) {
+                var stockReservation = activities.stockReservation(userId, item.name(), item.qtty());
+                saga.addCompensation(activities::compensateStockReservation, stockReservation);
+            }
+
+            activities.sendReservedItems(userId);
+
         } catch (ActivityFailure e) {
             saga.compensate();
             throw e;
