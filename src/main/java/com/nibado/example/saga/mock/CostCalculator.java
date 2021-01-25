@@ -1,4 +1,6 @@
-package com.nibado.example.saga.workflow;
+package com.nibado.example.saga.mock;
+
+import com.nibado.example.saga.workflow.ItemQtty;
 
 import java.util.List;
 import java.util.Map;
